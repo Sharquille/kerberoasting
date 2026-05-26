@@ -21,7 +21,9 @@ func GenerateHash(c HashComponents) (*HashResult, error) {
 
 	// 3. Size-sanity checks
 	if len(cipher) < 24 {
-		return nil, errors.New("cipher too short: need at least 24 hex characters for the checksum segment")
+		return nil, errors.New(
+			"cipher too short: need at least 24 hex characters for the checksum segment",
+		)
 	}
 
 	if len(cipher)%2 != 0 {
@@ -29,7 +31,9 @@ func GenerateHash(c HashComponents) (*HashResult, error) {
 	}
 
 	if !isValidHex(cipher) {
-		return nil, errors.New("cipher contains invalid hex characters (only 0-9 and A-F are allowed)")
+		return nil, errors.New(
+			"cipher contains invalid hex characters (only 0-9 and A-F are allowed)",
+		)
 	}
 
 	// Extract Checksum and remaining data
@@ -74,10 +78,12 @@ func validateComponents(c HashComponents) error {
 	// SPN validation (expects service/host or service/host.domain)
 	spnRegex := regexp.MustCompile(`^[a-zA-Z0-9_-]+\/[a-zA-Z0-9.-]+$`)
 	if !spnRegex.MatchString(c.SPN) {
-		return ValidationError{Feild: "spn = service", Message: "invalid SPN format (expected: service/host.domain)"}
+		return ValidationError{
+			Feild:   "spn = service",
+			Message: "invalid SPN format (expected: service/host.domain)",
+		}
 	}
 	return nil
-
 }
 
 // isValidHex validates that the target string contains only valid hex numerals.
@@ -86,12 +92,21 @@ func isValidHex(s string) bool {
 	return hexRegex.MatchString(s)
 }
 
-// validateHashFormat checks the layout of the finished string to ensure compatibility.
+// validateHashFormat performs comprehensive format validation on the generated hash
 func validateHashFormat(hash string) bool {
 	parts := strings.Split(hash, "$")
 
-	// Expecting: ["", "krb5tgs", "etype", "*user$domain$spn*", "checksum", "edata2"]
-	if len(parts) != 6 {
+	// The format is: $krb5tgs$etype$*user$domain$spn*$checksum$edata2
+	// When split by "$", this yields exactly 8 parts:
+	// parts[0]: ""
+	// parts[1]: "krb5tgs"
+	// parts[2]: etype (e.g., "17", "18", "23")
+	// parts[3]: "*user"
+	// parts[4]: "domain"
+	// parts[5]: "spn*"
+	// parts[6]: "checksum"
+	// parts[7]: "edata2"
+	if len(parts) != 8 {
 		return false
 	}
 
@@ -99,32 +114,32 @@ func validateHashFormat(hash string) bool {
 		return false
 	}
 
-	// Verify that the etype is a standard recognizable integer
-	if parts[2] != "17" && parts[2] != "18" && parts[2] != "23" {
+	etype := parts[2]
+	if etype != "17" && etype != "18" && etype != "23" {
 		return false
 	}
 
-	// Verify the SPN wraps around asterisk bounds
-	spnSection := parts[3]
-	if !strings.HasPrefix(spnSection, "*") || !strings.HasSuffix(spnSection, "*") {
+	// Validate SPN outer asterisk boundaries
+	if !strings.HasPrefix(parts[3], "*") || !strings.HasSuffix(parts[5], "*") {
 		return false
 	}
 
-	// Extract content within asterisks and split by dollar sign
-	spnContent := spnSection[1 : len(spnSection)-1]
-	spnParts := strings.Split(spnContent, "$")
-	if len(spnParts) != 3 {
-		return false
+	// Validate checksum length based on etype
+	checksum := parts[6]
+	if etype == "18" || etype == "17" {
+		// AES128/AES256 checksums are exactly 12 bytes (24 hex characters)
+		if len(checksum) != 24 || !isValidHex(checksum) {
+			return false
+		}
+	} else if etype == "23" {
+		// RC4-HMAC checksums are 16 bytes (32 hex characters)
+		if len(checksum) != 32 || !isValidHex(checksum) {
+			return false
+		}
 	}
 
-	// Double-check the extracted checksum structure
-	checksum := parts[4]
-	if len(checksum) != 24 || !isValidHex(checksum) {
-		return false
-	}
-
-	// Double-check that remaining cipher bytes look syntactically correct
-	edata2 := parts[5]
+	// EData2 should be valid hex and of reasonable length
+	edata2 := parts[7]
 	if len(edata2) < 24 || !isValidHex(edata2) {
 		return false
 	}
