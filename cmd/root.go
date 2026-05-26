@@ -116,17 +116,17 @@ func collectMissingData() error {
 
 	// 1. Username
 	if user == "" {
-		user = promptForString(scanner, "👤 Username (from TGS-REQ cname)", "william.dupont")
+		user = promptForString(scanner, "👤 Username (from TGS-REQ cname)", "username")
 	}
 
 	// 2. Domain
 	if domain == "" {
-		domain = promptForString(scanner, "🏢 Domain Realm", "CATCORP.LOCAL")
+		domain = promptForString(scanner, "🏢 Domain Realm", "domain")
 	}
 
 	// 3. SPN
 	if spn == "" {
-		spn = promptForString(scanner, "🎯 Service Principal Name (SPN)", "cifs/DC01.catcorp.local")
+		spn = promptForString(scanner, "🎯 Service Principal Name (SPN)", "service/server.domain.")
 	}
 
 	// 4. Etype selector
@@ -254,7 +254,7 @@ func init() {
 
 	// Include helpful usage layouts
 	rootCmd.Example = `  # Run in interactive mode:
-  gogo
+  kerberoast
 
   # Run directly with flags:
   gogo -u william.dupont -d CATCORP.LOCAL -s cifs/DC01.catcorp.local -e 18 -c 168d462f... -o my_hash.txt`
