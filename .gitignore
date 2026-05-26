@@ -1,0 +1,24 @@
+# --- Binaries ---
+gogo
+gogo.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# --- Wordlists & Large Files ---
+rockyou.txt
+rockyou.txt.tar.gz
+*.tar.gz
+*.zip
+
+# --- Generated Hashes & Output Files ---
+*.txt
+*.hash
+!README.md
+!go.mod
+!go.sum
+
+# --- Go Environment ---
+vendor/
+.env

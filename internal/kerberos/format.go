@@ -44,7 +44,7 @@ func GenerateHash(c HashComponents) (*HashResult, error) {
 
 	// 5. Construct the specific $krb5tgs$ structure
 	// Format: $krb5tgs$etype$*user$domain$spn*$checksum$edata2
-	hash := fmt.Sprintf("$krb5tgs$%s$*%s$%s$%s*$%s$%s",
+	hash := fmt.Sprintf("$krb5tgs$%s$%s$%s$*%s*$%s$%s",
 		c.EType, c.User, strings.ToUpper(c.Domain), c.SPN, checksum, edata2)
 
 	return &HashResult{
