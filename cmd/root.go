@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"github.com/sharquille/kerberoasting/internal/kerberos"
+
 	"github.com/spf13/cobra"
 )
 
+// Declare command line interface flag states
 var (
 	etype    string
 	user     string
@@ -23,7 +25,7 @@ var (
 
 // Configures Cobra's execution attributes.
 var rootCmd = &cobra.Command{
-	Use:   "kerberoast",
+	Use:   "gogo",
 	Short: "Interactive Kerberoasting hash generator for Hashcat",
 	Long: `🎯 Kerberoasting Hash Generator
 
@@ -45,7 +47,7 @@ Usage:
 			printBanner()
 		}
 
-		// prompt user interactively for any undefined values
+		// Prompt user interactively for any undefined values
 		if err := collectMissingData(); err != nil {
 			return err
 		}
@@ -65,14 +67,14 @@ Usage:
 			return fmt.Errorf("hash generation failure: %w", err)
 		}
 
-		// print outcomes
+		// Print outcomes
 		if !quiet {
 			displayResults(result)
 		} else {
 			fmt.Println(result.Hash)
 		}
 
-		// write to disk
+		// Write to disk
 		if saveFile == "" && !quiet {
 			saveFile = promptForSaveFile()
 		}
@@ -92,7 +94,8 @@ Usage:
 		}
 
 		return nil
-	}}
+	},
+}
 
 // printBanner displays the application banner.
 func printBanner() {
@@ -104,14 +107,78 @@ func printBanner() {
 
 // collectMissingData checks if flags are missing and asks the user to fill them.
 func collectMissingData() error {
-	scanner := bufio.NewReadWriter(os.Stdin)
+	scanner := bufio.NewScanner(os.Stdin)
 
 	if !quiet {
 		fmt.Println("📋 Enter details below (Defaults are shown in square brackets):")
 		fmt.Println()
 	}
 
+	// 1. Username
+	if user == "" {
+		user = promptForString(scanner, "👤 Username (from TGS-REQ cname)", "william.dupont")
+	}
+
+	// 2. Domain
+	if domain == "" {
+		domain = promptForString(scanner, "🏢 Domain Realm", "CATCORP.LOCAL")
+	}
+
+	// 3. SPN
+	if spn == "" {
+		spn = promptForString(scanner, "🎯 Service Principal Name (SPN)", "cifs/DC01.catcorp.local")
+	}
+
+	// 4. Etype selector
+	if etype == "" {
+		if !quiet {
+			fmt.Println("\n🔐 Supported Encryption Formats:")
+			fmt.Println("   17 = AES128-CTS-HMAC-SHA1-96")
+			fmt.Println("   18 = AES256-CTS-HMAC-SHA1-96 (Standard/Most Common)")
+			fmt.Println("   23 = RC4-HMAC")
+		}
+		etype = promptForString(scanner, "   Select encryption type [17/18/23]", "18")
+	}
+
+	// 5. Cipher stream hex data
+	if cipher == "" {
+		if !quiet {
+			fmt.Println("\n🔑 Extracting Ticket Cipher Stream:")
+			fmt.Println("   1. Locate relevant TGS-REP packet in Wireshark")
+			fmt.Println("   2. Expand fields: Kerberos -> tgs-rep -> ticket -> enc-part")
+			fmt.Println("   3. Right-click 'cipher' -> Copy -> as Hex Stream")
+			fmt.Println()
+		}
+		fmt.Print("📝 Paste hex cipher stream: ")
+		if scanner.Scan() {
+			cipher = strings.TrimSpace(scanner.Text())
+		}
+		if cipher == "" {
+			return fmt.Errorf("empty cipher input provided")
+		}
+	}
+
 	return nil
+}
+
+// promptForString provides a CLI input flow returning a fallback default on empty input.
+func promptForString(scanner *bufio.Scanner, prompt, defaultValue string) string {
+	if defaultValue != "" {
+		fmt.Printf("%s [%s]: ", prompt, defaultValue)
+	} else {
+		fmt.Printf("%s: ", prompt)
+	}
+
+	if scanner.Scan() {
+		input := strings.TrimSpace(scanner.Text())
+		if input == "" && defaultValue != "" {
+			return defaultValue
+		}
+		if input != "" {
+			return input
+		}
+	}
+	return defaultValue
 }
 
 // promptForSaveFile queries whether the user wants to persist the output to disk.
@@ -128,7 +195,6 @@ func promptForSaveFile() string {
 			return ""
 		}
 		return input
-
 	}
 	return "hash.txt"
 }
